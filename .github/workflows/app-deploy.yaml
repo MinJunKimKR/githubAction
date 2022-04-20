@@ -1,0 +1,60 @@
+name: 'SWM: Deploy to Azure'
+
+on: 
+  push:
+    branches:
+      - main
+
+jobs:
+  build_test:
+    name: 'Build and Test'
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set environment variables
+      shell: bash
+      run: |
+        echo "FUNCTION_APP_PATH=${{ github.workplace }}/api" >> $GITHUB_ENV
+    - name: check environment variables
+      shell: bash
+      run: |
+        echo $FUNCTION_APP_PATH
+
+    - name: checkOut the repo
+      uses: actions/checkout@v2
+
+    - name: setUp .NET SDK
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '6.x'
+    
+    - name: Restore NuGet packages
+      shell: bash
+      run: |
+        dotnet restore .
+    
+    - name : Build Function app
+      shell: bash
+      run: |
+        dotnet build . -c Release
+    
+    - name: Test Function App
+      shell: bash
+      run: |
+        dotnet test . -c Release
+    # pushd로 이동을하고,(cd랑 다른건 이전 위치를 기억을 한다 )
+    # publish에 전부다 만들어진것을 부어라
+    # popd -> 이전의 위치로 돌아가라는 의미암
+    - name: Create Function App Artifact
+      shell: bash
+      run: |
+        pushd "${{ env.FUNCTION_APP_PATH }}"
+        dotnet publish . -c Release -o published
+        popd
+    #published 경로의 파일을 압축해서 업로드를 해라라는 의미다.
+    - name: Upload Function App Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: apiapp
+        path: ${{ env.FUNCTION_APP_PATH }}/published
